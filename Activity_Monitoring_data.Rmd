@@ -1,0 +1,173 @@
+---
+title: "Activity_Monitoring_data"
+author: "James Northup"
+date: "9/23/2020"
+output: html_document
+---
+
+## 1.) Code for reading in the dataset and/or processing the data
+```{r, echo=TRUE, message=FALSE}
+
+
+library(tidyverse)
+
+## Create temp file
+temp <- tempfile()
+
+## Downloads zipped data
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",
+              temp)
+
+## Unzips files
+path1 <- unzip(temp, "activity.csv")
+
+
+## Delete temp file
+unlink(temp)
+
+## Reads RDS into data frame
+Activity_data <- read.csv(path1)
+Activity_data$date <- as.Date(Activity_data$date , format = "%Y-%m-%d")
+
+
+```
+
+## 2.) Histogram of the total number of steps taken each day
+
+```{r, echo=TRUE}
+## Histograms with fill based on variable
+Steps_per_Day <- aggregate(steps ~ date, Activity_data, sum)
+
+
+## Create Histogram
+hist(Steps_per_Day$steps, xlab = "Total steps per day", main = "Histogram of number of steps per day")
+
+```
+## 3.) Mean and median number of steps taken each day
+
+```{r, echo=TRUE}
+# Mean steps per day
+steps_Day_Mean <- mean(Steps_per_Day$steps)
+steps_Day_Mean <- median(Steps_per_Day$steps)
+```
+The mean for steps per day is `r steps_Day_Mean` while the median is `r steps_Day_Mean`
+
+
+## 4.) Time series plot of the average number of steps taken
+
+```{r}
+
+mean_Steps_per_Interval <-
+  aggregate(steps ~ interval, Activity_data, mean)
+plot(
+  steps ~ interval,
+  mean_Steps_per_Interval,
+  type = "l",
+  main = "Average number of steps time series plot",
+  col = "steelblue"
+)
+
+```
+## 5.) The 5-minute interval that, on average, contains the maximum number of steps\n
+
+
+
+```{r}
+
+## max step in 5-minute interval
+max_step_interval <-
+  mean_Steps_per_Interval[mean_Steps_per_Interval$steps == max(mean_Steps_per_Interval$steps), ]
+
+```
+Maximum steps per 5 minute interval is `r max_step_interval$steps` at interval `r max_step_interval$interval`
+
+
+## 6.) Code to describe and show a strategy for imputing missing data
+
+```{r}
+
+
+## Check if data has missing data
+count(Activity_data[is.na(Activity_data$steps), ])
+count(Activity_data[is.na(Activity_data$interval), ])
+count(Activity_data[is.na(Activity_data$date), ])
+
+
+## NA are present in column steps. Below will replace step na
+## values into mean values
+
+## Copy original data into new new variable
+Activity_data_NAisMean <- Activity_data
+
+index <- 1
+
+## For loop replaces na steps into mean, if mean is na then we set mean to 0.
+
+for (each in Activity_data_NAisMean$steps) {
+  if (is.na(Activity_data_NAisMean$steps[index])) {
+    mean_index <-
+      mean(Activity_data_NAisMean$steps[1:index], na.rm = TRUE)
+    if (is.na(mean_index)) {
+      mean_index <- 0
+    }
+    Activity_data_NAisMean$steps[index] <- mean_index
+    
+    
+  }
+  index = index + 1
+  
+}
+
+```
+
+## 7.) Histogram of the total number of steps taken each day after missing values are imputed
+
+
+```{r, echo=TRUE}
+## Histograms with fill based on variable
+Steps_per_Day_NAisMean <-
+  aggregate(steps ~ date, Activity_data_NAisMean, sum)
+
+## Create Histogram
+hist(Steps_per_Day_NAisMean$steps,
+     xlab = "Total steps per day",
+     main = "Histogram of number of steps per day (Imputed)")
+```
+
+
+
+## 8.) Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r}
+
+library(chron)
+names(Activity_data)
+
+mean_Steps_per_Interva_Weekends <-
+  aggregate(steps ~ interval, Activity_data[is.weekend(Activity_data$date),], mean)
+
+mean_Steps_per_Interva_Weekdays <-
+  aggregate(steps ~ interval, Activity_data[!is.weekend(Activity_data$date),], mean)
+
+
+par(mfrow=c(1,2))
+plot(
+  steps ~ interval,
+  mean_Steps_per_Interva_Weekends,
+  type = "l",
+  main = "Average steps on weekends",
+  col = "steelblue"
+)
+
+plot(
+  steps ~ interval,
+  mean_Steps_per_Interva_Weekdays,
+  type = "l",
+  main = "Average steps on weekdays",
+  col = "steelblue"
+)
+
+
+```
+
+## 9.) All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
